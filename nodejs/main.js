@@ -57,8 +57,8 @@ serverWebSocket.on('request', function(request) {
 connectionInterface.on('error', function(e) {
 	// If the connection was refused, try again in 5 seconds
 	if(e.code == 'ECONNREFUSED') {
-		console.log(tag() + 'Failed to connect interface. Retrying in 5 seconds.');
-		setTimeout(function() {connectionInterface.connect(portInterface, hostInterface);}, 5000);
+    console.log(tag() + 'Failed to connect interface.');
+    reconnect();
 	}
 });
 
@@ -70,12 +70,20 @@ connectionInterface.on('data', function(data) {
 connectionInterface.on('close', function() {
 	// Whenever the connection is closed, notify
 	console.log(tag() + 'Connection closed');
+  reconnect();
 });
 
 connectionInterface.connect(portInterface, hostInterface, function() {
 	// Whenever the connection is established, notify
 	console.log(tag() + 'Connected to ' + hostInterface + ':' + portInterface + '.');
 });
+
+var reconnectTimeout = null;
+function reconnect() {
+  if(reconnectTimeout != null) clearTimeout(reconnectTimeout);
+  console.log(tag() + 'Retrying in 5 seconds.');
+  reconnectTimeout = setTimeout(function() {connectionInterface.connect(portInterface, hostInterface);}, 5000);
+}
 
 function sendToAllClientsWebsocket(data) {
 	// Send the data to all clients

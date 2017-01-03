@@ -1,6 +1,6 @@
 var connection = null;
 
-var hostLocation = 'ws://192.168.2.40:1337';
+var hostLocation = 'ws://127.0.0.1:1337';
 var hostProtocol = 'vocoder-protocol';
 
 function connect() {

@@ -5,6 +5,7 @@
 #include "../effects/pitch.h"
 #include "../effects/equalizer.h"
 #include "../effects/echo.h"
+#include "../effects/keyboard.h"
 
 #include <iostream>
 
@@ -12,6 +13,7 @@ std::regex Commands::regexUpdate("^UPDATE (\\w+) (\\w+) ((?:[-+]?[0-9]+\\.?[0-9]
 std::regex Commands::regexRename("^RENAME (\\w+) (\\w{1,16})$");
 std::regex Commands::regexAdd("^ADD (\\w+) (\\w{1,16})(?: ((?:[-+]?[0-9]+\\.?[0-9]*)(?:,[-+]?[0-9]+\\.?[0-9]*)*))?$");
 std::regex Commands::regexRemove("^REMOVE (\\w+)$");
+std::regex Commands::regexRemoveAll("^REMOVEALL$");
 
 // TODO!! CHECK ALL INPUT FOR FORMATING!
 int Commands::execute(Processor* processor, char* command) {
@@ -88,6 +90,9 @@ int Commands::execute(Processor* processor, char* command) {
         else if(cm[1].compare("equalizer") == 0)
             effect = new Equalizer(processor, parameters[0], parameters[1], (int) (parameters[2]));
         
+        else if(cm[1].compare("keyboard") == 0)
+            effect = new Keyboard(processor, (int) parameters[0]);
+        
         if(effect != nullptr) {
             strcpy(effect->name, cm[2].str().c_str());
             processor->effects.push_back(effect);
@@ -100,11 +105,22 @@ int Commands::execute(Processor* processor, char* command) {
         // Find the corresponding effect
         for(auto it = processor->effects.begin();it != processor->effects.end();it ++) {
             if(cm[1].compare((*it)->name) == 0) {
-                // Remove it from the list
+                // Delete the effect, and remove it from the list
+                delete (*it);
                 processor->effects.erase(it);
                 return 1;
             }
         }
+    }
+    
+    // REMOVEALL
+    if(std::regex_search(command, cm, regexRemoveAll)) {
+        // Delete all effects, and clear the list
+        for(auto it = processor->effects.begin();it != processor->effects.end();it ++) {
+            delete (*it);
+        }
+        processor->effects.clear();
+        return 1;
     }
     
     return 0;

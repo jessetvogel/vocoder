@@ -219,6 +219,6 @@ Processor::~Processor() {
     
     // Delete all effects
     for(auto it = effects.begin(); it != effects.end();it ++) {
-        delete *it;
+        delete (*it);
     }
 }

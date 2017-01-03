@@ -8,6 +8,7 @@
 #include "effects/reverb.h"
 #include "effects/echo.h"
 #include "effects/autotune.h"
+#include "effects/keyboard.h"
 
 #include "server/server.h"
 #include "server/commands.h"
@@ -49,7 +50,7 @@ int main() {
     server.max_queue = 10;
 
     // Add effects
-    c.effects.push_back(new NoiseFilter(&c));
+    c.effects.push_back(new Keyboard(&c, 1));
 
     server.start();
     c.start();
