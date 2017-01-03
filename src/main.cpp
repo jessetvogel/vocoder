@@ -15,7 +15,7 @@
 
 #define MAX_LENGTH 1024
 
-Processor c(44100, 1024, 4, 2);
+Processor c(44100, 2048, 8, 2);
 
 int callback(int socket_client)
 {
@@ -50,7 +50,7 @@ int main() {
     server.max_queue = 10;
 
     // Add effects
-    c.effects.push_back(new Keyboard(&c, 1));
+    c.effects.push_back(new Keyboard(&c, 2));
 
     server.start();
     c.start();

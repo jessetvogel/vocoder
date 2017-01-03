@@ -75,121 +75,117 @@ int util::synthesis(fftw_complex* freqCoefficients, double* sumPhase, int amount
     return 1;
 }
 
-#include <iostream>
-
-int zz = 0;
-
 double util::fundamentalFrequency(double* analyticMagn, double* analyticFreq, int amountOfBins, double freqPerBin) {
-    
-    zz ++;
-    
-//    if(zz % 20 == 0) {
-//        std::cout << std::endl;
-//        for(int x = 0;x < 46;x ++) {
-//            std::cout << analyticMagn[x] << '\t' << analyticFreq[x] << std::endl;
-//        }
-//        std::cout << std::endl;
-//    }
-//    
-    
     // Uses Two-Way Mismatch (TWM) as described in: https://pdfs.semanticscholar.org/c94b/56f21f32b3b7a9575ced317e3de9b2ad9081.pdf
     
     // Declare variables
-    double maxFreq = 2000;
-    int maxPeaks = 8;
-    double freqThreshold = freqPerBin / 2;
-    double sumF, sumA2, peakFrequency, Amax = 0.0;
-    unsigned int i, p, maxI = maxFreq / freqPerBin;
+    const double freqRange = 2000.0;
+    const int maxAmountOfPeaks = 8;
+    const double freqThreshold = freqPerBin / 2;
+    int maxBin = freqRange / freqPerBin; if(maxBin > amountOfBins) maxBin = amountOfBins;
+    double sumFreq, sumMagn2, magn2, localFreq, maximumMagn = 0.0;
+    int bin, l, p;
     
     // Step 1: Find peaks (simply check if it is a local maximum)
-    double peakA[maxPeaks];
-    double peakf[maxPeaks];
+    double peakMagn[maxAmountOfPeaks];
+    double peakFreq[maxAmountOfPeaks];
     
     p = 0;
-    for(i = 1;i < maxI && p < maxPeaks;i ++) {
+    for(bin = 1;bin < maxBin && p < maxAmountOfPeaks;bin ++) {
         // Look for local maxima
-        if(analyticMagn[i] > analyticMagn[i - 1] && analyticMagn[i] > analyticMagn[i + 1]) {
-            peakFrequency = analyticFreq[i];
-            sumF = 0.0;
-            sumA2 = 0.0;
-            while(i > 0 && std::abs(analyticFreq[i - 1] - peakFrequency) < freqThreshold) {
-                i --;
+        if(analyticMagn[bin] > analyticMagn[bin - 1] && analyticMagn[bin] > analyticMagn[bin + 1]) {
+            localFreq = analyticFreq[bin];
+            magn2 = analyticMagn[bin]*analyticMagn[bin];
+            sumMagn2 = magn2;
+            sumFreq = localFreq * magn2;
+            
+            // Search for bins below this one contributing to (roughly) the same frequency
+            l = bin - 1;
+            while(l >= 0 && std::abs(analyticFreq[l] - localFreq) < freqThreshold) {
+                magn2 = analyticMagn[l]*analyticMagn[l];
+                sumMagn2 += magn2;
+                sumFreq += analyticFreq[l] * magn2;
+                l --;
             }
             
-            while(i < maxI && std::abs(analyticFreq[i] - peakFrequency) < freqThreshold) {
-                sumF += analyticMagn[i] * analyticMagn[i] * analyticFreq[i];
-                sumA2 += analyticMagn[i] * analyticMagn[i];
-                i ++;
+            // Search for bins above this one contributing to (roughly) the same frequency
+            while(bin + 1 < maxBin && std::abs(analyticFreq[bin + 1] - localFreq) < freqThreshold) {
+                bin ++;
+                magn2 = analyticMagn[bin]*analyticMagn[bin];
+                sumMagn2 += magn2;
+                sumFreq += analyticFreq[bin] * magn2;
             }
 
-            peakA[p] = std::sqrt(sumA2);
-            peakf[p] = sumF / sumA2;
-            if(peakA[p] > Amax) Amax = peakA[p];
+            // Update maximumMagn if the magnitude of this peak is larger than the previous one
+            peakMagn[p] = std::sqrt(sumMagn2);
+            peakFreq[p] = sumFreq / sumMagn2;
+            if(peakMagn[p] > maximumMagn) maximumMagn = peakMagn[p];
             
+            // Next peak
             p ++;
         }
     }
     
-    // Step 2: Choose fFund's
-    unsigned int K = p;
+    // If no peaks were found, return that the fundamental frequency is zero
+    if(p == 0) return 0.0;
     
-    if(K == 0) return 0.0;
+    // Step 2: Choose fundamental frequencies
+    int K = p;
+    double fundamentalFreqMin = 50;
+    double fundamentalFreqMax = 500;
+    double minimumError = 999999.999; // TODO fix this
+    double fundamentalFreq, fundamentalFreqBest;
     
-    double fFundMin = 50;
-    double fFundMax = 500;
-    double minError = 999999.999; // TODO fix this
-    double fFund, fFundBest, ErrMtoP, ErrPtoM, ErrTotal;
-    unsigned int N, n, k;
-    double deltaFn, deltaFk, d;
-    
-    // Step 3+4+5+6: Compute for each fFund the error, and minimize it
-    for(fFund = fFundMin;fFund < fFundMax;fFund *= 1.05946) {
-        // Compute ErrPtoM
-        ErrPtoM = 0.0;
-        N = std::ceil(peakf[K - 1] / fFund);
-        k = 0;
-        for(n = 1;n <= N;n ++) {
-            // Minimize deltaFn
-            deltaFn = std::abs(fFund * n - peakf[k]);
-            while(k + 1 < K && (d = std::abs(fFund * n - peakf[k + 1])) < deltaFn) {
-                deltaFn = d;
-                k ++;
-            }
-            double tmp = deltaFn / std::sqrt(fFund * n);
-            ErrPtoM += tmp + (peakA[k] / Amax) * (1.4 * tmp - 0.5);
-        }
-        
-        // Compute ErrMtoP
-        ErrMtoP = 0.0;
-        n = 0;
-        for(k = 0;k < K;k ++) {
-            // Minimize deltaFk
-            n = (unsigned int) round(peakf[k] / fFund);
-            deltaFk = std::abs(fFund * n - peakf[k]);
-            
-            double tmp = deltaFk / std::sqrt(peakf[k]);
-            ErrMtoP += tmp + (peakA[k] / Amax) * (1.4 * tmp - 0.5);
-        }
-        
-        // Compute ErrTotal
-        ErrTotal = ErrPtoM / N + 0.33 * ErrMtoP / K;
-        
-        if(ErrTotal < minError) {
-            minError = ErrTotal;
-            fFundBest = fFund;
+    // Step 3+4+5+6: Compute for each fundamentalFreq the error, and minimize it (take steps of 1 semitone)
+    for(fundamentalFreq = fundamentalFreqMin;fundamentalFreq < fundamentalFreqMax;fundamentalFreq *= 1.059463094359295) {
+        double error = TWMError(fundamentalFreq, peakMagn, peakFreq, K, maximumMagn);
+        if(error < minimumError) {
+            minimumError = error;
+            fundamentalFreqBest = fundamentalFreq;
         }
     }
     
-    // Return the frequency corresponding to the peak closest to fFundBest
-    k = 0;
-    deltaFn = std::abs(fFundBest - peakf[0]);
-    while(k + 1 < K && (d = std::abs(fFund * n - peakf[k + 1])) < deltaFn) {
-        deltaFn = d;
-        k ++;
+    // Refine a bit more (8 steps per semitone)
+    fundamentalFreqMin = fundamentalFreqBest * 0.950714015038751;
+    fundamentalFreqMax = fundamentalFreqBest * 1.051841020729289;
+    for(fundamentalFreq = fundamentalFreqMin;fundamentalFreq < fundamentalFreqMax;fundamentalFreq *= 1.007246412223704) {
+        double error = TWMError(fundamentalFreq, peakMagn, peakFreq, K, maximumMagn);
+        if(error < minimumError) {
+            minimumError = error;
+            fundamentalFreqBest = fundamentalFreq;
+        }
     }
-    if(deltaFn < freqThreshold)
-        return peakf[k];
-    else
-        return fFundBest;
+    
+    return fundamentalFreqBest;
 }
 
+double util::TWMError(double fundamentalFreq, double* peakMagn, double* peakFreq, int K, double maximumMagn) {
+    // Compute errorPToM
+    double errorPToM = 0.0;
+    int N = std::ceil(peakFreq[K - 1] / fundamentalFreq);
+    int k = 0;
+    double d;
+    for(int n = 1;n <= N;n ++) {
+        // Minimize deltaFn
+        double deltaFn = std::abs(fundamentalFreq * n - peakFreq[k]);
+        while(k + 1 < K && (d = std::abs(fundamentalFreq * n - peakFreq[k + 1])) < deltaFn) {
+            deltaFn = d;
+            k ++;
+        }
+        double tmp = deltaFn / std::sqrt(fundamentalFreq * n);
+        errorPToM += tmp + (peakMagn[k] / maximumMagn) * (1.4 * tmp - 0.5);
+    }
+    
+    // Compute errorMToP
+    double errorMToP = 0.0;
+    for(k = 0;k < K;k ++) {
+        // Minimize deltaFk
+        double deltaFk = std::abs(fundamentalFreq * round(peakFreq[k] / fundamentalFreq) - peakFreq[k]);
+        
+        double tmp = deltaFk / std::sqrt(peakFreq[k]);
+        errorMToP += tmp + (peakMagn[k] / maximumMagn) * (1.4 * tmp - 0.5);
+    }
+    
+    // Return the total error
+    return errorPToM / N + 0.33 * errorMToP / K;
+}

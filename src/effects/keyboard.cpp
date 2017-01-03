@@ -40,7 +40,7 @@ Keyboard::Keyboard(Processor* processor, unsigned int amountOfTones) {
     
     optionLabels.push_back(OptionLabel("tones", 0));
     for(unsigned int t = 0;t < amountOfTones;t ++) {
-        options[2*t] = 300.0; // Frequency
+        options[2*t] = 200.0; // Frequency
         options[2*t+1] = 1.0; // Gain
     }
 }
