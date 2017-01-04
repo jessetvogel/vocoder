@@ -40,8 +40,8 @@ Keyboard::Keyboard(Processor* processor, unsigned int amountOfTones) {
     
     optionLabels.push_back(OptionLabel("tones", 0));
     for(unsigned int t = 0;t < amountOfTones;t ++) {
-        options[2*t] = 200.0; // Frequency
-        options[2*t+1] = 1.0; // Gain
+        options[2*t] = 0.0; // Frequency
+        options[2*t+1] = 0.0; // Gain
     }
 }
 
@@ -80,7 +80,7 @@ int Keyboard::applyToChannel(unsigned int channel) {
     for(k = 0;k < amountOfBins;k ++) {
         for(t = 0;t < amountOfTones;t ++) {
             pitchShift = options[2*t] / fundamentalFreq;
-            index = round(k * pitchShift);
+            index = floor(k * pitchShift);
             if (index < amountOfBins) {
                 syntheticMagn[index] += analyticMagn[k] * options[2*t+1]; // TODO: fix asynchronous update of options stuff...
                 syntheticFreq[index] = analyticFreq[k] * pitchShift;
