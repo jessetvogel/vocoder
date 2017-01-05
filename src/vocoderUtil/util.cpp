@@ -75,6 +75,40 @@ int util::synthesis(fftw_complex* freqCoefficients, double* sumPhase, int amount
     return 1;
 }
 
+int util::synthesisAdd(fftw_complex* freqCoefficients, double* sumPhase, int amountOfBins, int overlapFactor, double freqPerBin, double* syntheticMagn, double* syntheticFreq) {
+    // Declare variables
+    double magn, phase, tmp, expectedPhase = 2.0 * M_PI / overlapFactor;
+    unsigned int k, index;
+    
+    for(k = 0;k < amountOfBins;k ++) {
+        // Get magnitude and instantaneous frequency from synthesis arrays
+        magn = syntheticMagn[k];
+        tmp = syntheticFreq[k];
+        
+        // Subtract bin mid frequency
+        tmp -= (double) k * freqPerBin;
+        
+        // Get bin deviation from freq deviation
+        tmp /= freqPerBin;
+        
+        // Take overlapFactor into account
+        tmp = 2.0 * M_PI * tmp / overlapFactor;
+        
+        // Add the overlap phase advance back in
+        tmp += (double) k * expectedPhase;
+        
+        // Accumulate delta phase to get bin phase
+        sumPhase[k] += tmp;
+        phase = sumPhase[k];
+        
+        // Compute real and imaginary part
+        freqCoefficients[k][0] += magn * cos(phase);
+        freqCoefficients[k][1] += magn * sin(phase);
+    }
+    
+    return 1;
+}
+
 double util::fundamentalFrequency(double* analyticMagn, double* analyticFreq, int amountOfBins, double freqPerBin) {
     // Uses Two-Way Mismatch (TWM) as described in: https://pdfs.semanticscholar.org/c94b/56f21f32b3b7a9575ced317e3de9b2ad9081.pdf
     
@@ -146,15 +180,15 @@ double util::fundamentalFrequency(double* analyticMagn, double* analyticFreq, in
     }
     
     // Refine a bit more (8 steps per semitone)
-    fundamentalFreqMin = fundamentalFreqBest * 0.950714015038751;
-    fundamentalFreqMax = fundamentalFreqBest * 1.051841020729289;
-    for(fundamentalFreq = fundamentalFreqMin;fundamentalFreq < fundamentalFreqMax;fundamentalFreq *= 1.007246412223704) {
-        double error = TWMError(fundamentalFreq, peakMagn, peakFreq, K, maximumMagn);
-        if(error < minimumError) {
-            minimumError = error;
-            fundamentalFreqBest = fundamentalFreq;
-        }
-    }
+//    fundamentalFreqMin = fundamentalFreqBest * 0.950714015038751;
+//    fundamentalFreqMax = fundamentalFreqBest * 1.051841020729289;
+//    for(fundamentalFreq = fundamentalFreqMin;fundamentalFreq < fundamentalFreqMax;fundamentalFreq *= 1.007246412223704) {
+//        double error = TWMError(fundamentalFreq, peakMagn, peakFreq, K, maximumMagn);
+//        if(error < minimumError) {
+//            minimumError = error;
+//            fundamentalFreqBest = fundamentalFreq;
+//        }
+//    }
     
     return fundamentalFreqBest;
 }

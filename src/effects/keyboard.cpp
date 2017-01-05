@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-Keyboard::Keyboard(Processor* processor, unsigned int amountOfTones) {
+Keyboard::Keyboard(Processor* processor, int amountOfTones) {
     // Store and compute useful information
     sampleRate = processor->sampleRate;
     windowSize = processor->windowSize;
@@ -17,17 +17,17 @@ Keyboard::Keyboard(Processor* processor, unsigned int amountOfTones) {
     freqPerBin = sampleRate / processor->windowSize;
     expectedPhase = 2.0 * M_PI / overlapFactor;
     this->amountOfTones = amountOfTones;
-    
+
     // Create buffers
     lastPhase = new double[amountOfBins * amountOfChannels];
-    sumPhase = new double[amountOfBins * amountOfChannels];
+    sumPhase = new double[amountOfBins * amountOfTones * amountOfChannels];
     analyticMagn = new double[amountOfBins];
     analyticFreq = new double[amountOfBins];
     syntheticMagn = new double[amountOfBins];
     syntheticFreq = new double[amountOfBins];
     
     memset(lastPhase, 0, sizeof(double) * amountOfBins * amountOfChannels);
-    memset(sumPhase, 0, sizeof(double) * amountOfBins * amountOfChannels);
+    memset(sumPhase, 0, sizeof(double) * amountOfBins * amountOfTones * amountOfChannels);
     memset(analyticMagn, 0, sizeof(double) * amountOfBins);
     memset(analyticFreq, 0, sizeof(double) * amountOfBins);
     memset(syntheticMagn, 0, sizeof(double) * amountOfBins);
@@ -35,19 +35,19 @@ Keyboard::Keyboard(Processor* processor, unsigned int amountOfTones) {
     
     // Set (default) name and options
     strcpy(name, "Keyboard");
-    amountOfOptions = amountOfTones * 2;
+    amountOfOptions = 2 * amountOfTones;
     options = new double[amountOfOptions];
     
     optionLabels.push_back(OptionLabel("tones", 0));
+    
     for(unsigned int t = 0;t < amountOfTones;t ++) {
         options[2*t] = 0.0; // Frequency
-        options[2*t+1] = 0.0; // Gain
+        options[2*t+1] = 0.0; // Magnitude
     }
 }
 
 int Keyboard::apply() {
-    // Apply a pitch shift to all channels
-    fundamentalFreq = -1.0;
+    // Apply to all channels
     for(unsigned int channel = 0;channel < amountOfChannels;channel ++)
         applyToChannel(channel);
     
@@ -55,41 +55,40 @@ int Keyboard::apply() {
 }
 
 int Keyboard::applyToChannel(unsigned int channel) {
-    int offset  = channel * amountOfBins;
-    fftw_complex* _freqCoefficients = freqCoefficients + offset;
-    
     // Declare variables
-    double magn, phase, tmp, real, imag, pitchShift, maxMagn = 0.0, maxFreq = 1.0;
-    unsigned int k, t, index;
+    fftw_complex* _freqCoefficients = freqCoefficients + channel * amountOfBins;
+    double magn, phase, tmp, real, imag;
+    unsigned int t, k, index;
     
-    // Step 1: Analysis
-    util::analysis(_freqCoefficients, lastPhase + offset, amountOfBins, overlapFactor, freqPerBin, analyticMagn, analyticFreq);
+    // Analysis
+    util::analysis(_freqCoefficients, lastPhase + channel * amountOfBins, amountOfBins, overlapFactor, freqPerBin, analyticMagn, analyticFreq);
     
-    // Step 2: Determine the fundamental frequency (this is only done for the first channel, the other channels will use this same frequency)
-    if(fundamentalFreq < 0.0) {
-        fundamentalFreq = util::fundamentalFrequency(analyticMagn, analyticFreq, amountOfBins, freqPerBin);
-    }
+    // Determine fundamental frequency if first channel
+    if(channel == 0) fundamentalFreq = util::fundamentalFrequency(analyticMagn, analyticFreq, amountOfBins, freqPerBin);
     
-    if(fundamentalFreq <= 0.0) {
-        return 1;
-    }
+    // In case of silence, do nothing
+    if(fundamentalFreq <= 0.0) return 1;
     
-    // Step 3: Processing
-    memset(syntheticMagn, 0, sizeof(double) * amountOfBins);
-    memset(syntheticFreq, 0, sizeof(double) * amountOfBins);
-    for(k = 0;k < amountOfBins;k ++) {
-        for(t = 0;t < amountOfTones;t ++) {
-            pitchShift = options[2*t] / fundamentalFreq;
-            index = floor(k * pitchShift);
+    // Processing
+    memset(_freqCoefficients, 0, sizeof(fftw_complex) * amountOfBins);
+    for(t = 0;t < amountOfTones;t ++) {
+        // If tone has no additional value, neglect it
+        if(options[2*t + 1] == 0) continue;
+            
+        memset(syntheticMagn, 0, sizeof(double) * amountOfBins);
+        memset(syntheticFreq, 0, sizeof(double) * amountOfBins);
+        double pitchShift = options[2*t] / fundamentalFreq;
+        for(k = 0; k < amountOfBins;k ++) {
+            index = round(k * pitchShift);
             if (index < amountOfBins) {
-                syntheticMagn[index] += analyticMagn[k] * options[2*t+1]; // TODO: fix asynchronous update of options stuff...
+                syntheticMagn[index] += analyticMagn[k] * options[2*t + 1];
                 syntheticFreq[index] = analyticFreq[k] * pitchShift;
             }
         }
+        
+        // Partial synthesis
+        util::synthesisAdd(_freqCoefficients, sumPhase + amountOfBins * (t + amountOfTones * channel), amountOfBins, overlapFactor, freqPerBin, syntheticMagn, syntheticFreq);
     }
-    
-    // Step 4: Synthesis
-    util::synthesis(_freqCoefficients, sumPhase + offset, amountOfBins, overlapFactor, freqPerBin, syntheticMagn, syntheticFreq);
     
     return 1;
 }

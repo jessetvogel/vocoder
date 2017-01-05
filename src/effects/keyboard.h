@@ -2,6 +2,7 @@
 #define KEYBOARD_H
 
 #include <fftw3.h>
+#include "effect.h"
 #include "../processor.h"
 
 class Keyboard : public Effect {
@@ -30,7 +31,7 @@ protected:
 
 public:
     
-    Keyboard(Processor* processor, unsigned int);
+    Keyboard(Processor*, int);
     ~Keyboard();
     int apply();
     int applyToChannel(unsigned int);

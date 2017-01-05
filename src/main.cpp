@@ -49,9 +49,6 @@ int main() {
     server.handle = &callback;
     server.max_queue = 10;
 
-    // Add effects
-    c.effects.push_back(new NoiseFilter(&c));
-
     server.start();
     c.start();
     

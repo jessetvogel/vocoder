@@ -39,7 +39,7 @@ function effectKeyboard(div) {
 				var velocity = event.data[0] == 0x80 ? 0 : event.data[2];
 
 				// Determine frequency and update noteData
-				var frequency = midiNoteToFrequency(midiNote) / 4.0;
+				var frequency = midiNoteToFrequency(midiNote) / 2.0;
 				for(var i = 0;i < maxAmountOfNotes - 1;i ++) {
 					if(noteData[2*i] == frequency) break;
 				}
