@@ -1,24 +1,24 @@
-#ifndef REVERB_H
-#define REVERB_H
+#ifndef LOWPASS_H
+#define LOWPASS_H
 
 #include <fftw3.h>
 #include "effect.h"
 #include "../processor.h"
 
-class Reverb : public Effect {
+class LowPass : public Effect {
     
     int amountOfBins;
     int amountOfChannels;
+    double freqPerBin;
     
-    double expectedPhase;
+    double centerFrequency;
     
     fftw_complex* freqCoefficients;
-    fftw_complex* freqCoefficientsBuffer;
     
 public:
     
-    Reverb(Processor*);
-    ~Reverb();
+    LowPass(Processor*);
+    ~LowPass();
     int apply();
     int applyToChannel(unsigned int);
     

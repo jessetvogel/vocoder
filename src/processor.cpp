@@ -31,7 +31,7 @@ Processor::Processor(PaSampleFormat sampleRate, int windowSize, int overlapFacto
 
 int Processor::start() {
     // Execute run in a different thread
-    mutex.lock();
+    mutexThread.lock();
     std::thread thread(&Processor::run, this);
     thread.detach();
     return 1;
@@ -39,7 +39,7 @@ int Processor::start() {
 
 int Processor::stop() {
     // Unlock mutex, so that the thread will terminate
-    mutex.unlock();
+    mutexThread.unlock();
     return 1;
 }
 
@@ -91,8 +91,8 @@ int Processor::run() {
     if(err != paNoError) goto error;
     
     // Wait for mutex to unlock
-    mutex.lock();
-    mutex.unlock();
+    mutexThread.lock();
+    mutexThread.unlock();
     
     err = Pa_CloseStream(stream);
     if(err != paNoError) goto error;
@@ -173,8 +173,10 @@ int Processor::callback(const void* inputBuffer,
         fftw_execute_dft_r2c(processor->fft, workspace + channel * windowSize, frequencyCoefficients + channel * (windowSize/2 + 1));
     
     // Apply effects
+    processor->mutexEffects.lock();
     for(auto it = effects.begin(); it != effects.end();it ++)
         (*it)->apply();
+    processor->mutexEffects.unlock();
     
     // IFFT
     for(channel = 0;channel < amountOfChannels;channel ++)

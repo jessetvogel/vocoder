@@ -5,8 +5,6 @@
 #include "effects/gain.h"
 #include "effects/noisefilter.h"
 #include "effects/equalizer.h"
-#include "effects/reverb.h"
-#include "effects/echo.h"
 #include "effects/autotune.h"
 #include "effects/keyboard.h"
 

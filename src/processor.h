@@ -19,7 +19,7 @@ class Processor {
     fftw_plan fft;
     fftw_plan ifft;
     
-    std::mutex mutex;
+    std::mutex mutexThread;
     
     void error(const char*);
     
@@ -38,6 +38,7 @@ public:
     fftw_complex* frequencyCoefficients;
     
     std::vector<Effect*> effects;
+    std::mutex mutexEffects;
 
     Processor(PaSampleFormat, int, int, int);
     int start();

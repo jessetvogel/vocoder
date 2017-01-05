@@ -4,8 +4,9 @@
 #include "../effects/gain.h"
 #include "../effects/pitch.h"
 #include "../effects/equalizer.h"
-#include "../effects/echo.h"
+#include "../effects/lowpass.h"
 #include "../effects/keyboard.h"
+#include "../effects/phaser.h"
 
 #include <iostream>
 
@@ -18,6 +19,8 @@ std::regex Commands::regexRemoveAll("^REMOVEALL$");
 // TODO!! CHECK ALL INPUT FOR FORMATING!
 int Commands::execute(Processor* processor, char* command) {
     std::cmatch cm;
+    
+    std::cout << "Check 1" << std::endl;
     
     // Check whether they match the regex's
     
@@ -77,6 +80,8 @@ int Commands::execute(Processor* processor, char* command) {
             }
         }
         
+        std::cout << "Check 2" << std::endl;
+        
         // List of supported effects
         if(cm[1].compare("gain") == 0)
             effect = new Gain(processor);
@@ -84,21 +89,28 @@ int Commands::execute(Processor* processor, char* command) {
         else if(cm[1].compare("pitch") == 0)
             effect = new Pitch(processor);
 
-        else if(cm[1].compare("echo") == 0)
-            effect = new Echo(processor);
-
         else if(cm[1].compare("equalizer") == 0)
             effect = new Equalizer(processor, parameters[0], parameters[1], (int) (parameters[2]));
         
         else if(cm[1].compare("keyboard") == 0)
             effect = new Keyboard(processor, (int) parameters[0]);
         
+        else if(cm[1].compare("lowpass") == 0)
+            effect = new LowPass(processor);
+        
+        else if(cm[1].compare("phaser") == 0)
+            effect = new Phaser(processor);
+        
         if(effect != nullptr) {
             strcpy(effect->name, cm[2].str().c_str());
+            processor->mutexEffects.lock();
             processor->effects.push_back(effect);
+            processor->mutexEffects.unlock();
             return 1;
         }
     }
+    
+    std::cout << "Check 3" << std::endl;
     
     // REMOVE effectName
     if(std::regex_search(command, cm, regexRemove)) {
@@ -106,8 +118,10 @@ int Commands::execute(Processor* processor, char* command) {
         for(auto it = processor->effects.begin();it != processor->effects.end();it ++) {
             if(cm[1].compare((*it)->name) == 0) {
                 // Delete the effect, and remove it from the list
-                delete (*it);
+                processor->mutexEffects.lock();
                 processor->effects.erase(it);
+                processor->mutexEffects.unlock();
+                delete (*it);
                 return 1;
             }
         }
@@ -119,7 +133,9 @@ int Commands::execute(Processor* processor, char* command) {
         for(auto it = processor->effects.begin();it != processor->effects.end();it ++) {
             delete (*it);
         }
+        processor->mutexEffects.lock();
         processor->effects.clear();
+        processor->mutexEffects.unlock();
         return 1;
     }
     
