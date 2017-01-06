@@ -45,6 +45,15 @@ public:
     int stop();
     int run();
     ~Processor();
+    
+    int setInputDevice(int);
+    int setOutputDevice(int);
+    void getDeviceInfo();
+    
+    int inputDeviceId;
+    int outputDeviceId;
+    
+    int running;
 };
 
 #endif

@@ -11,6 +11,10 @@ class Commands {
     static std::regex regexAdd;
     static std::regex regexRemove;
     static std::regex regexRemoveAll;
+    static std::regex regexInput;
+    static std::regex regexOutput;
+    static std::regex regexStart;
+    static std::regex regexStop;
     
 public:
     

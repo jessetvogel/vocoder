@@ -27,6 +27,13 @@ Processor::Processor(PaSampleFormat sampleRate, int windowSize, int overlapFacto
     // Create FFT and IFFT plans
     fft = fftw_plan_dft_r2c_1d(windowSize, workspace, frequencyCoefficients, FFTW_ESTIMATE);  //Setup fftw plan for fft
     ifft = fftw_plan_dft_c2r_1d(windowSize, frequencyCoefficients, workspace, FFTW_ESTIMATE);   //Setup fftw plan for ifft
+    
+    // Set initial input and output devices as the defaults
+    inputDeviceId = Pa_GetDefaultInputDevice();
+    outputDeviceId = Pa_GetDefaultOutputDevice();
+    
+    // Initially, it doesn't run
+    running = 0;
 }
 
 int Processor::start() {
@@ -43,35 +50,64 @@ int Processor::stop() {
     return 1;
 }
 
+int Processor::setInputDevice(int deviceId) {
+    int numDevices = Pa_GetDeviceCount();
+    if(deviceId < 0 || deviceId >= numDevices) {
+        std::cout << "Device with id " << deviceId << " does not exist." << std::endl;
+        return 0;
+    }
+    inputDeviceId = deviceId;
+    return 1;
+}
+
+int Processor::setOutputDevice(int deviceId) {
+    int numDevices = Pa_GetDeviceCount();
+    if(deviceId < 0 || deviceId >= numDevices) {
+        std::cout << "Device with id " << deviceId << " does not exist." << std::endl;
+        return 0;
+    }
+    outputDeviceId = deviceId;
+    return 1;
+}
+
+void Processor::getDeviceInfo() {
+    int numDevices = Pa_GetDeviceCount();
+    const PaDeviceInfo* deviceInfo;
+    
+    std::cout << "Available devices:" << std::endl;
+    for(int i = 0;i < numDevices;i ++)
+    {
+        deviceInfo = Pa_GetDeviceInfo( i );
+        std::cout << "[" << i << "] " << deviceInfo->name << std::endl;
+    }
+}
+
 int Processor::run() {
-    PaError err;
-    
-    err = Pa_Initialize();
-    if(err != paNoError) goto error;
-    
     // Set stream/input/output options
+    PaError err;
     PaStream *stream;
     
     PaStreamParameters inputParameters;
-    inputParameters.device = Pa_GetDefaultInputDevice(); /* default input device */
+    inputParameters.device = (PaDeviceIndex) inputDeviceId;
     if(inputParameters.device == paNoDevice) {
         error("Error: No default input device.");
         goto error;
     }
-    inputParameters.channelCount = 2;       /* stereo input */
+    
+    inputParameters.channelCount = 2;
     inputParameters.sampleFormat = sampleType;
     inputParameters.suggestedLatency = Pa_GetDeviceInfo(inputParameters.device)->defaultLowInputLatency;
     inputParameters.hostApiSpecificStreamInfo = NULL;
     
     PaStreamParameters outputParameters;
-    outputParameters.device = Pa_GetDefaultOutputDevice(); /* default output device */
+    outputParameters.device = (PaDeviceIndex) outputDeviceId;
     if(outputParameters.device == paNoDevice) {
         error("Error: No default input device.");
         goto error;
     }
-    outputParameters.channelCount = 2;       /* stereo output */
+    outputParameters.channelCount = 2;
     outputParameters.sampleFormat = sampleType;
-    outputParameters.suggestedLatency = Pa_GetDeviceInfo( outputParameters.device )->defaultLowOutputLatency;
+    outputParameters.suggestedLatency = Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency;
     outputParameters.hostApiSpecificStreamInfo = NULL;
     
     // Create a stream
@@ -90,6 +126,9 @@ int Processor::run() {
     err = Pa_StartStream(stream);
     if(err != paNoError) goto error;
     
+    // Indicate that the stream is running
+    running = 1;
+    
     // Wait for mutex to unlock
     mutexThread.lock();
     mutexThread.unlock();
@@ -97,7 +136,9 @@ int Processor::run() {
     err = Pa_CloseStream(stream);
     if(err != paNoError) goto error;
     
-    Pa_Terminate();
+    // Indicate that the stream stopped
+    running = 0;
+    
     return 0;
     
 error:
@@ -192,7 +233,7 @@ int Processor::callback(const void* inputBuffer,
     for(x = 0;x < windowSize;x ++) {
         window = 0.5 - 0.5 * cos(2.0 * M_PI * (double) x / (double) windowSize);
         for(channel = 0;channel < amountOfChannels;channel ++) {
-            outputAccumulator[x + channel * windowSize] += 2.0 * window * workspace[x + channel * windowSize] / (windowSize / 2 * overlapFactor);
+            outputAccumulator[x + channel * windowSize] += 2.0 * window * workspace[x + channel * windowSize] / (windowSize / 2.0 * overlapFactor);
         }
     }
     

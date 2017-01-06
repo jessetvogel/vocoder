@@ -10,11 +10,13 @@ Phaser::Phaser(Processor* processor) {
     
     // Set (default) name and options
     strcpy(name, "Phaser");
-    amountOfOptions = 0;
+    amountOfOptions = 2;
     options = new double[amountOfOptions];
     
-//    optionLabels.push_back(OptionLabel("", 0));
-//    options[0] = 1.0;
+    optionLabels.push_back(OptionLabel("stages", 0));
+    options[0] = 0.0;
+    optionLabels.push_back(OptionLabel("depth", 1));
+    options[1] = 0.0;
 }
 
 int z = 0;
@@ -43,13 +45,12 @@ int Phaser::applyToChannel(unsigned int channel) {
         magn = sqrt(real*real + imag*imag);
         phase = atan2(imag, real);
         
-        double freq = 200.0 + 50.0 * sin((double) z / 50.0);
-        phase -= atan((double) k * freqPerBin / freq) * 8;
+        double freq = 200.0 + 100.0 * sin((double) z / 10.0);
+        phase -= atan((double) k * freqPerBin / freq) * options[0];
         
         // Compute magnitude and phase of each bin
-        double f = 0.5;
-        _freqCoefficients[k][0] += magn * cos(phase) * f;
-        _freqCoefficients[k][1] += magn * sin(phase) * f;
+        _freqCoefficients[k][0] += magn * cos(phase) * options[1];
+        _freqCoefficients[k][1] += magn * sin(phase) * options[1];
     }
     
     return 1;

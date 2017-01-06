@@ -15,13 +15,14 @@ std::regex Commands::regexRename("^RENAME (\\w+) (\\w{1,16})$");
 std::regex Commands::regexAdd("^ADD (\\w+) (\\w{1,16})(?: ((?:[-+]?[0-9]+\\.?[0-9]*)(?:,[-+]?[0-9]+\\.?[0-9]*)*))?$");
 std::regex Commands::regexRemove("^REMOVE (\\w+)$");
 std::regex Commands::regexRemoveAll("^REMOVEALL$");
+std::regex Commands::regexInput("^INPUT (\\d+)$");
+std::regex Commands::regexOutput("^OUTPUT (\\d+)$");
+std::regex Commands::regexStart("^START$");
+std::regex Commands::regexStop("^STOP$");
 
 // TODO!! CHECK ALL INPUT FOR FORMATING!
 int Commands::execute(Processor* processor, char* command) {
-    std::cmatch cm;
-    
-    std::cout << "Check 1" << std::endl;
-    
+    std::cmatch cm;    
     // Check whether they match the regex's
     
     // UPDATE effect label values
@@ -80,8 +81,6 @@ int Commands::execute(Processor* processor, char* command) {
             }
         }
         
-        std::cout << "Check 2" << std::endl;
-        
         // List of supported effects
         if(cm[1].compare("gain") == 0)
             effect = new Gain(processor);
@@ -110,8 +109,6 @@ int Commands::execute(Processor* processor, char* command) {
         }
     }
     
-    std::cout << "Check 3" << std::endl;
-    
     // REMOVE effectName
     if(std::regex_search(command, cm, regexRemove)) {
         // Find the corresponding effect
@@ -130,12 +127,53 @@ int Commands::execute(Processor* processor, char* command) {
     // REMOVEALL
     if(std::regex_search(command, cm, regexRemoveAll)) {
         // Delete all effects, and clear the list
+        processor->mutexEffects.lock();
         for(auto it = processor->effects.begin();it != processor->effects.end();it ++) {
             delete (*it);
         }
-        processor->mutexEffects.lock();
         processor->effects.clear();
         processor->mutexEffects.unlock();
+        
+        return 1;
+    }
+    
+    // INPUT deviceId
+    if(std::regex_search(command, cm, regexInput)) {
+        processor->setInputDevice(atoi(cm[1].str().c_str()));
+        return 1;
+    }
+    
+    // OUTPUT deviceId
+    if(std::regex_search(command, cm, regexOutput)) {
+        processor->setOutputDevice(atoi(cm[1].str().c_str()));
+        return 1;
+    }
+    
+    // START
+    if(std::regex_search(command, cm, regexStart)) {
+        if(processor->running) {
+            std::cout << "Processor was already started." << std::endl;
+            return 1;
+        }
+        
+        processor->start();
+        return 1;
+    }
+    
+    // STOP
+    if(std::regex_search(command, cm, regexStop)) {
+        if(!(processor->running)) {
+            std::cout << "Processor was already stopped." << std::endl;
+            return 1;
+        }
+        
+        processor->stop();
+        return 1;
+    }
+    
+    // DEVICEINFO
+    if(std::regex_search(command, cm, std::regex("^DEVICEINFO$"))) {
+        processor->getDeviceInfo();
         return 1;
     }
     
