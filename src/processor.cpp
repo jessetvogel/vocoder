@@ -1,7 +1,7 @@
 #include "processor.h"
 
 #include <iostream>
-#include <math.h>
+#include <cmath>
 #include <ctime>
 #include <thread>
 
@@ -198,6 +198,7 @@ int Processor::callback(const void* inputBuffer,
         for(channel = 0;channel < amountOfChannels;channel ++) {
             *(ptr + channel * windowSize) = (double) (*in++);
         }
+        
         ptr ++;
     }
     

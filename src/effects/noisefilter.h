@@ -8,6 +8,7 @@
 class NoiseFilter : public Effect {
     
     int amountOfBins;
+    int amountOfChannels;
     
     fftw_complex* freqCoefficients;
     

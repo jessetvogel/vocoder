@@ -11,6 +11,7 @@ namespace util {
     
     double fundamentalFrequency(double*, double*, int, double);
     double TWMError(double, double*, double*, int, double);
+    extern double certainty;
 }
 
 #endif

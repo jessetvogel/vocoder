@@ -7,6 +7,7 @@
 #include "effects/noisefilter.h"
 #include "effects/equalizer.h"
 #include "effects/autotune.h"
+#include "effects/lowpass.h"
 #include "effects/keyboard.h"
 
 #include "server/server.h"
@@ -55,7 +56,7 @@ int main() {
     }
     
     // Setup processor
-    c = new Processor(44100, 1024, 8, 2);
+    c = new Processor(44100, 2048, 4, 2);
     
     // Setup server
     Server server(7000);

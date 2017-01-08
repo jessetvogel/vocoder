@@ -19,14 +19,10 @@ Phaser::Phaser(Processor* processor) {
     options[1] = 0.0;
 }
 
-int z = 0;
-
 int Phaser::apply() {
     // Apply to all channels
     for(unsigned int channel = 0;channel < amountOfChannels;channel ++)
         applyToChannel(channel);
-    
-    z ++;
     
     return 1;
 }
@@ -45,7 +41,7 @@ int Phaser::applyToChannel(unsigned int channel) {
         magn = sqrt(real*real + imag*imag);
         phase = atan2(imag, real);
         
-        double freq = 200.0 + 100.0 * sin((double) z / 10.0);
+        double freq = 200.0;
         phase -= atan((double) k * freqPerBin / freq) * options[0];
         
         // Compute magnitude and phase of each bin

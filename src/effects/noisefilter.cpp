@@ -5,6 +5,7 @@ NoiseFilter::NoiseFilter(Processor* processor) {
     // Store and compute useful information
     freqCoefficients = processor->frequencyCoefficients;
     amountOfBins = processor->windowSize/2 + 1;
+    amountOfChannels = processor->amountOfChannels;
     
     // Set (default) name and options
     strcpy(name, "NoiseFilter");
@@ -18,21 +19,25 @@ NoiseFilter::NoiseFilter(Processor* processor) {
 int NoiseFilter::apply() {
     // Declare variables
     double magn, real, imag, totalMagn = 0.0;
-    unsigned int k;
+    unsigned int k, channel;
+    fftw_complex* _freqCoefficients;
     
     // For every bin, if the magnitude is below a certain threshold, set it to zero
     double threshold = options[0];
-    for(k = 0;k < amountOfBins;k ++) {
-        // Compute magnitude and phase of each bin
-        real = freqCoefficients[k][0];
-        imag = freqCoefficients[k][1];
-        
-        magn = sqrt(real*real + imag*imag);
-        totalMagn += magn;
-        
-        if(magn < threshold) {
-            freqCoefficients[k][0] = 0.0;
-            freqCoefficients[k][1] = 0.0;
+    for(channel = 0;channel < amountOfChannels;channel ++) {
+        _freqCoefficients = freqCoefficients + channel * amountOfBins;
+        for(k = 0;k < amountOfBins;k ++) {
+            // Compute magnitude and phase of each bin
+            real = _freqCoefficients[k][0];
+            imag = _freqCoefficients[k][1];
+            
+            magn = sqrt(real*real + imag*imag);
+            totalMagn += magn;
+            
+            if(magn < threshold) {
+                _freqCoefficients[k][0] = 0.0;
+                _freqCoefficients[k][1] = 0.0;
+            }
         }
     }
     

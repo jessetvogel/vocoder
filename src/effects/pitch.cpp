@@ -66,9 +66,13 @@ int Pitch::applyToChannel(unsigned int channel) {
     for(k = 0; k < amountOfBins;k ++) {
         index = round(k * pitchShift);
         if (index < amountOfBins) {
-            syntheticMagn[index] += analyticMagn[k];
+            syntheticMagn[index] += analyticMagn[k] * analyticMagn[k];
             syntheticFreq[index] = analyticFreq[k] * pitchShift;
         }
+    }
+    
+    for(index = 0;index < amountOfBins;index ++) {
+        syntheticMagn[index] = sqrt(syntheticMagn[index]);
     }
     
     // Step 3: Synthesis

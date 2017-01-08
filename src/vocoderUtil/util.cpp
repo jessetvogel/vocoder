@@ -109,16 +109,26 @@ int util::synthesisAdd(fftw_complex* freqCoefficients, double* sumPhase, int amo
     return 1;
 }
 
-double util::fundamentalFrequency(double* analyticMagn, double* analyticFreq, int amountOfBins, double freqPerBin) {
+int zz = 0;
+
+#include <iostream>
+
+double util::fundamentalFrequency(double* analyticMagnNoFilter, double* analyticFreq, int amountOfBins, double freqPerBin) {
     // Uses Two-Way Mismatch (TWM) as described in: https://pdfs.semanticscholar.org/c94b/56f21f32b3b7a9575ced317e3de9b2ad9081.pdf
     
     // Declare variables
     const double freqRange = 2000.0;
-    const int maxAmountOfPeaks = 8;
+    const int maxAmountOfPeaks = 12;
     const double freqThreshold = freqPerBin / 2;
     int maxBin = freqRange / freqPerBin; if(maxBin > amountOfBins) maxBin = amountOfBins;
     double sumFreq, sumMagn2, magn2, localFreq, maximumMagn = 0.0;
     int bin, l, p;
+    
+    // First apply low pass filter to make better prediction
+    double analyticMagn[amountOfBins];
+    for(bin = 0;bin < amountOfBins;bin ++) {
+        analyticMagn[bin] = analyticMagnNoFilter[bin] / ((1.0 + analyticFreq[bin] / 500.0) * (1.0 + analyticFreq[bin] / 500.0));
+    }
     
     // Step 1: Find peaks (simply check if it is a local maximum)
     double peakMagn[maxAmountOfPeaks];
@@ -136,7 +146,7 @@ double util::fundamentalFrequency(double* analyticMagn, double* analyticFreq, in
             // Search for bins below this one contributing to (roughly) the same frequency
             l = bin - 1;
             while(l >= 0 && std::abs(analyticFreq[l] - localFreq) < freqThreshold) {
-                magn2 = analyticMagn[l]*analyticMagn[l];
+                magn2 = analyticMagn[l] * analyticMagn[l];
                 sumMagn2 += magn2;
                 sumFreq += analyticFreq[l] * magn2;
                 l --;
@@ -190,6 +200,13 @@ double util::fundamentalFrequency(double* analyticMagn, double* analyticFreq, in
 //        }
 //    }
     
+    if(minimumError < 0.33)
+        certainty = 1.0;
+    else if(minimumError > 1.33)
+        certainty = 0.0;
+    else
+        certainty = (1.33 - minimumError) / 1.66;
+    
     return fundamentalFreqBest;
 }
 
@@ -223,3 +240,5 @@ double util::TWMError(double fundamentalFreq, double* peakMagn, double* peakFreq
     // Return the total error
     return errorPToM / N + 0.33 * errorMToP / K;
 }
+
+double util::certainty = 0.0;

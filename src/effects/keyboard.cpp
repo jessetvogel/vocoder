@@ -64,7 +64,11 @@ int Keyboard::applyToChannel(unsigned int channel) {
     util::analysis(_freqCoefficients, lastPhase + channel * amountOfBins, amountOfBins, overlapFactor, freqPerBin, analyticMagn, analyticFreq);
     
     // Determine fundamental frequency if first channel
-    if(channel == 0) fundamentalFreq = util::fundamentalFrequency(analyticMagn, analyticFreq, amountOfBins, freqPerBin);
+    if(channel == 0) {
+        tmp = util::fundamentalFrequency(analyticMagn, analyticFreq, amountOfBins, freqPerBin);
+        util::certainty = 0.1 + 0.9 * util::certainty;
+        fundamentalFreq = util::certainty * tmp + (1.0 - util::certainty) * fundamentalFreq;
+    }
     
     // In case of silence, do nothing
     if(fundamentalFreq <= 0.0) return 1;
@@ -81,9 +85,13 @@ int Keyboard::applyToChannel(unsigned int channel) {
         for(k = 0; k < amountOfBins;k ++) {
             index = round(k * pitchShift);
             if (index < amountOfBins) {
-                syntheticMagn[index] += analyticMagn[k] * options[2*t + 1];
+                syntheticMagn[index] += analyticMagn[k] * analyticMagn[k] * options[2*t + 1];
                 syntheticFreq[index] = analyticFreq[k] * pitchShift;
             }
+        }
+        
+        for(index = 0;index < amountOfBins;index ++) {
+            syntheticMagn[index] = sqrt(syntheticMagn[index]);
         }
         
         // Partial synthesis

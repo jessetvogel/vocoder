@@ -10,11 +10,13 @@ LowPass::LowPass(Processor* processor) {
 
     // Set (default) name and options
     strcpy(name, "LowPass");
-    amountOfOptions = 1;
+    amountOfOptions = 2;
     options = new double[amountOfOptions];
     
     optionLabels.push_back(OptionLabel("center", 0));
     options[0] = 1000.0;
+    optionLabels.push_back(OptionLabel("order", 1));
+    options[1] = 1.0;
 }
 
 int LowPass::apply() {
@@ -41,8 +43,8 @@ int LowPass::applyToChannel(unsigned int channel) {
         phase = atan2(imag, real);
         
         tmp = (double) k * freqPerBin / options[0];
-        magn /= 1.0 + tmp;
-        phase -= atan(tmp);
+        magn /= pow(1.0 + tmp, options[1]);
+        phase -= atan(tmp) * options[1];
         
         _freqCoefficients[k][0] = magn * cos(phase);
         _freqCoefficients[k][1] = magn * sin(phase);

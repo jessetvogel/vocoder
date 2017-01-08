@@ -77,6 +77,7 @@ int Commands::execute(Processor* processor, char* command) {
             const char* ptr = str.c_str();
             for(unsigned int i = 0;i < amountofParameters;i ++) {
                 parameters[i] = atof(ptr);
+                if(i == amountofParameters - 1) break;
                 while(*ptr != ',') ptr ++; ptr ++;
             }
         }
@@ -112,10 +113,10 @@ int Commands::execute(Processor* processor, char* command) {
     // REMOVE effectName
     if(std::regex_search(command, cm, regexRemove)) {
         // Find the corresponding effect
+        processor->mutexEffects.lock();
         for(auto it = processor->effects.begin();it != processor->effects.end();it ++) {
             if(cm[1].compare((*it)->name) == 0) {
                 // Delete the effect, and remove it from the list
-                processor->mutexEffects.lock();
                 processor->effects.erase(it);
                 processor->mutexEffects.unlock();
                 delete (*it);
@@ -133,7 +134,6 @@ int Commands::execute(Processor* processor, char* command) {
         }
         processor->effects.clear();
         processor->mutexEffects.unlock();
-        
         return 1;
     }
     
@@ -174,6 +174,14 @@ int Commands::execute(Processor* processor, char* command) {
     // DEVICEINFO
     if(std::regex_search(command, cm, std::regex("^DEVICEINFO$"))) {
         processor->getDeviceInfo();
+        return 1;
+    }
+    
+    // SHOWEFFECTS
+    if(std::regex_search(command, cm, std::regex("^SHOWEFFECTS$"))) {
+        for(auto it = processor->effects.begin();it != processor->effects.end();it ++) {
+            std::cout << (*it)->name << std::endl;
+        }
         return 1;
     }
     
