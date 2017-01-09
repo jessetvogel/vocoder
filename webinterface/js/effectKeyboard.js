@@ -1,6 +1,6 @@
 function effectKeyboard(div) {
 	// Variables
-	var width = 512;
+	var width = 960;
 	var height = 384;
 	var labelHeight = 48;
 	var labelFontSize = 24;
@@ -13,7 +13,7 @@ function effectKeyboard(div) {
 	div
 		.css({width: width + 'px', height: height + 'px', backgroundColor: '#47484B'})
 		.append($('<div>').addClass('label').text('K E Y B O A R D'))
-		.append($('<div>').addClass('info'));
+		.append($('<div>').addClass('keys'));
 
 		// The cool part
 
@@ -50,12 +50,14 @@ function effectKeyboard(div) {
 				// Send new data to interface
 				command('UPDATE myKeyboard tones ' + noteData.join(','));
 				// div.find('.info').append("Played " + midiNoteToName(event.data[1]) + " at velocity " + event.data[2] + "<br/>");
+
+				updateVisual(div, midiNote, velocity / 127.0);
 			}
 
 			div.find('.info').html(noteData.join('</br>'));
 		};
 	}, function (error) {
-		log.print('Something went wrong in requesting MIDI access: ' + err.code);
+		log.print('Something went wrong in requesting MIDI access: ' + error.code);
 	});
 
 	// Set css
@@ -69,6 +71,41 @@ function effectKeyboard(div) {
 		color: '#909090'
 	});
 
+	// Create keys
+	var keys = div.find('.keys').css({
+		position: 'relative',
+		top: (labelHeight + 128) + 'px',
+		left: '37px'
+	});
+	var x = 0;
+	for(var i = 0;i < 88;i ++) {
+		switch(i % 12) {
+			// White key
+			case 0: case 2: case 3: case 5: case 7: case 8: case 10:
+				keys.append($('<div>').addClass('key').css({
+					position: 'absolute',
+					left: x + 'px',
+					top: '0px',
+					width: '16px',
+					height: '128px',
+					backgroundColor: 'rgb(249, 249, 249)'
+				}));
+				x += 17;
+				break;
+			// Black key
+			default:
+				keys.append($('<div>').addClass('key').css({
+					position: 'absolute',
+					left: (x - 6) + 'px',
+					top: '0px',
+					width: '12px',
+					height: '96px',
+					backgroundColor: 'rgb(64, 64, 64)',
+					zIndex: 1
+				}));
+			break;
+		}
+	}
 }
 
 function midiNoteToFrequency(midiNote) {
@@ -79,4 +116,23 @@ function midiNoteToFrequency(midiNote) {
 function midiNoteToName(midiNote) {
 	var arr = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 	return arr[midiNote % 12];
+}
+
+function updateVisual(div, midiNote, x) {
+	var key = midiNote - 21;
+	var keyArray = div.find('.key');
+	var c;
+	switch(key % 12) {
+		// White key
+		case 0: case 2: case 3: case 5: case 7: case 8: case 10:
+		c = x * 160 + (1 - x) * 249;
+		break;
+		default:
+		c = (1 - x) * 64;
+		break;
+	}
+	c = Math.round(c);
+	keyArray.eq(key).css({
+		backgroundColor: 'rgb(' +c+','+c+','+c+ ')'
+	});
 }
